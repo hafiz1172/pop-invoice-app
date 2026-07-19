@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1450A3">
+<title>POP Invoice</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --blue-900:#0B3D8C;
+    --blue-800:#1450A3;
+    --blue-600:#1F6FE0;
+    --blue-100:#E7F0FF;
+    --blue-050:#F3F8FF;
+    --ink:#10233F;
+    --ink-soft:#5B7291;
+    --line:#DCE6F5;
+    --white:#FFFFFF;
+    --green:#1E9E6B;
+    --red:#D9483D;
+    --amber:#E0932A;
+    --radius:18px;
+    --radius-sm:12px;
+    --shadow: 0 8px 24px rgba(16,35,63,0.10);
+    --shadow-sm: 0 2px 8px rgba(16,35,63,0.08);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(180deg, var(--blue-050) 0%, #EAF1FC 100%);
+    color: var(--ink);
+    overscroll-behavior-y: contain;
+  }
+  #app{ max-width:520px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:90px;}
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background: linear-gradient(135deg, var(--blue-900), var(--blue-600));
+    color:#fff; padding:18px 18px 22px;
+    border-radius: 0 0 24px 24px;
+    box-shadow: var(--shadow);
+  }
+  .topbar .row{display:flex; align-items:center; gap:12px;}
+  .back-btn{
+    width:38px;height:38px;border-radius:50%;
+    background:rgba(255,255,255,0.16); border:none; color:#fff;
+    font-size:20px; display:flex; align-items:center; justify-content:center;
+  }
+  .topbar h1{font-size:20px; margin:0; font-weight:700; letter-spacing:.2px;}
+  .topbar .sub{font-size:12.5px; opacity:.85; margin-top:2px;}
+  .screen{ padding: 18px 16px 8px; display:none; animation: fade .18s ease;}
+  .screen.active{display:block;}
+  @keyframes fade{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+
+  /* HOME */
+  .brand{ text-align:center; padding: 10px 0 6px; }
+  .brand .logo-circle{
+    width:64px;height:64px;border-radius:50%;
+    background: linear-gradient(135deg, var(--blue-600), var(--blue-900));
+    margin:0 auto 10px; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:28px; font-weight:800; box-shadow: var(--shadow);
+  }
+  .brand h2{margin:0; font-size:19px;}
+  .brand p{margin:2px 0 0; color:var(--ink-soft); font-size:13px;}
+
+  .home-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px;}
+  .home-btn{
+    background:#fff; border:1px solid var(--line); border-radius: var(--radius);
+    padding:22px 14px; text-align:center; box-shadow: var(--shadow-sm);
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    transition: transform .12s ease;
+  }
+  .home-btn:active{ transform: scale(.96); }
+  .home-btn .icon{
+    width:52px;height:52px;border-radius:16px; display:flex; align-items:center; justify-content:center;
+    font-size:26px; color:#fff;
+  }
+  .home-btn span.label{font-size:14.5px; font-weight:700; color:var(--ink);}
+  .ic-invoice{background:linear-gradient(135deg,#2E7BF5,#1450A3);}
+  .ic-sales{background:linear-gradient(135deg,#1EBF87,#0E8F63);}
+  .ic-history{background:linear-gradient(135deg,#8A6BE0,#5C3FC7);}
+  .ic-settings{background:linear-gradient(135deg,#F0954B,#D9722A);}
+
+  .today-strip{
+    margin-top:16px; background:#fff; border-radius: var(--radius); border:1px solid var(--line);
+    padding:16px; box-shadow: var(--shadow-sm); display:flex; justify-content:space-between; align-items:center;
+  }
+  .today-strip .t-label{font-size:12px; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.4px;}
+  .today-strip .t-val{font-size:22px; font-weight:800; color:var(--blue-900);}
+
+  /* CARDS / FORM */
+  .card{ background:#fff; border-radius: var(--radius); border:1px solid var(--line);
+    padding:16px; box-shadow: var(--shadow-sm); margin-bottom:14px; }
+  .card h3{margin:0 0 12px; font-size:14px; color:var(--blue-900); text-transform:uppercase; letter-spacing:.5px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:13px 14px; border-radius:12px; border:1.5px solid var(--line);
+    font-size:15.5px; background:var(--blue-050); color:var(--ink); font-family:inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--blue-600); background:#fff;}
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .quick-row{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+  .chip{
+    border:1.5px solid var(--blue-100); background:var(--blue-100); color:var(--blue-800);
+    padding:9px 14px; border-radius:20px; font-size:13px; font-weight:600;
+  }
+  .chip:active{ transform: scale(.95); }
+
+  .item-row{ border:1.5px solid var(--line); border-radius:14px; padding:12px; margin-bottom:10px; position:relative; background:var(--blue-050);}
+  .item-row .remove-x{
+    position:absolute; top:8px; right:8px; width:26px;height:26px; border-radius:50%;
+    background:#fff; border:1px solid var(--line); color:var(--red); font-size:15px; font-weight:700;
+  }
+  .item-row .two-col{margin-top:8px;}
+  .item-total{ text-align:right; font-weight:800; color:var(--blue-900); font-size:15px; margin-top:8px;}
+
+  .add-row-btn{
+    width:100%; padding:13px; border-radius:14px; border:1.8px dashed var(--blue-600);
+    background:#fff; color:var(--blue-700, var(--blue-600)); font-weight:700; font-size:14.5px;
+  }
+
+  .summary-line{ display:flex; justify-content:space-between; padding:8px 0; font-size:14.5px; color:var(--ink-soft);}
+  .summary-line.total{ font-size:19px; font-weight:800; color:var(--blue-900); border-top:1.5px dashed var(--line); margin-top:6px; padding-top:12px;}
+  .summary-line input{ width:110px; text-align:right; padding:8px 10px; border-radius:10px; border:1.5px solid var(--line); font-size:14.5px;}
+
+  .pay-toggle{ display:flex; gap:10px; }
+  .pay-toggle button{ flex:1; padding:12px; border-radius:12px; border:1.8px solid var(--line); background:#fff; font-weight:700; color:var(--ink-soft);}
+  .pay-toggle button.active{ background:var(--blue-800); border-color:var(--blue-800); color:#fff;}
+
+  .primary-btn{
+    width:100%; padding:16px; border-radius:16px; border:none;
+    background: linear-gradient(135deg, var(--blue-600), var(--blue-900)); color:#fff;
+    font-size:16px; font-weight:800; box-shadow: var(--shadow); letter-spacing:.2px;
+  }
+  .primary-btn:active{ transform: scale(.98); }
+  .secondary-btn{
+    width:100%; padding:14px; border-radius:16px; border:1.8px solid var(--blue-600);
+    background:#fff; color:var(--blue-800); font-size:15px; font-weight:700; margin-top:10px;
+  }
+
+  /* HISTORY */
+  .search-bar{ display:flex; gap:8px; margin-bottom:12px;}
+  .search-bar input{ flex:1; padding:12px 14px; border-radius:14px; border:1.5px solid var(--line); font-size:14.5px; background:#fff;}
+  .search-bar select{ padding:12px; border-radius:14px; border:1.5px solid var(--line); font-size:13.5px; background:#fff;}
+  .inv-card{ background:#fff; border-radius:16px; border:1px solid var(--line); padding:14px; margin-bottom:10px; box-shadow: var(--shadow-sm);}
+  .inv-card .row1{display:flex; justify-content:space-between; align-items:center;}
+  .inv-card .inv-no{font-weight:800; color:var(--blue-900); font-size:15px;}
+  .inv-card .inv-date{font-size:12px; color:var(--ink-soft);}
+  .inv-card .row2{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
+  .inv-card .cust{font-size:13.5px; color:var(--ink);}
+  .inv-card .amt{font-weight:800; color:var(--blue-800); font-size:16px;}
+  .status-pill{ font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; text-transform:uppercase;}
+  .status-paid{ background:#DEF6EB; color:var(--green);}
+  .status-partial{ background:#FDF0DD; color:var(--amber);}
+  .status-unpaid{ background:#FBE4E2; color:var(--red);}
+  .empty-state{ text-align:center; padding:50px 20px; color:var(--ink-soft);}
+  .empty-state .big{font-size:40px; margin-bottom:10px;}
+  .due-banner{ background:#FDF0DD; border:1.5px solid var(--amber); color:#8A5A12; padding:11px 14px; border-radius:12px; font-size:13px; font-weight:700; margin-top:-2px;}
+  .due-banner.credit{ background:#DEF6EB; border-color:var(--green); color:#0E6B47; }
+  .balance-due{ color:var(--red); }
+  .balance-credit{ color:var(--green); }
+  .balance-clear{ color:var(--ink-soft); }
+
+  /* DAILY SALES */
+  .sales-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px;}
+  .sales-card{ background:#fff; border-radius:16px; border:1px solid var(--line); padding:16px; box-shadow: var(--shadow-sm);}
+  .sales-card .cat-name{font-size:12.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.3px;}
+  .sales-card .cat-amt{font-size:20px; font-weight:800; color:var(--blue-900); margin-top:6px;}
+  .sales-card .cat-qty{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .sales-total{ margin-top:14px; background:linear-gradient(135deg,var(--blue-900),var(--blue-600)); color:#fff; border-radius:18px; padding:18px; box-shadow:var(--shadow);}
+  .sales-total .row{display:flex; justify-content:space-between; margin-top:6px;}
+  .sales-total .row:first-child{margin-top:0;}
+  .sales-total .lbl{font-size:13px; opacity:.85;}
+  .sales-total .val{font-size:18px; font-weight:800;}
+
+  /* FAB */
+  .fab{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+    width:min(488px, calc(100% - 32px));
+    background:#fff; border-radius:20px; box-shadow:0 10px 30px rgba(16,35,63,0.18);
+    display:flex; justify-content:space-around; padding:10px 6px; z-index:30; border:1px solid var(--line);
+  }
+  .fab button{ background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--ink-soft); font-size:10.5px; font-weight:700; padding:6px 8px;}
+  .fab button .fic{ font-size:19px; }
+  .fab button.active{ color:var(--blue-800); }
+
+  /* INVOICE PRINT VIEW */
+  .invoice-preview{ background:#fff; border-radius:16px; padding:20px; border:1px solid var(--line); }
+  .ip-header{ display:flex; justify-content:space-between; border-bottom:2px solid var(--blue-800); padding-bottom:14px; margin-bottom:14px;}
+  .ip-header h2{margin:0; color:var(--blue-900); font-size:19px;}
+  .ip-header p{margin:2px 0 0; font-size:12px; color:var(--ink-soft);}
+  .ip-meta{ text-align:right; font-size:12.5px; color:var(--ink-soft);}
+  .ip-table{ width:100%; border-collapse:collapse; font-size:13px; margin-bottom:12px;}
+  .ip-table th{ text-align:left; background:var(--blue-050); padding:8px; font-size:11px; text-transform:uppercase; color:var(--blue-800);}
+  .ip-table td{ padding:8px; border-bottom:1px solid var(--line);}
+  .ip-table td.num, .ip-table th.num{text-align:right;}
+  .toast{
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:12px 20px; border-radius:14px; font-size:13.5px;
+    z-index:50; box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+  .hidden{display:none !important;}
+  .modal-bg{ position:fixed; inset:0; background:rgba(10,20,40,0.45); z-index:40; display:flex; align-items:flex-end; }
+  .modal-sheet{ background:#fff; width:100%; border-radius:22px 22px 0 0; padding:20px; max-height:82vh; overflow:auto;}
+  .modal-sheet h3{margin-top:0;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ HOME ============ -->
+  <section class="screen active" id="screen-home">
+    <div class="topbar">
+      <div class="brand" style="color:#fff;">
+        <div class="logo-circle" id="homeLogo">PP</div>
+        <h2 style="color:#fff;" id="homeCompanyName">Plaster of Paris Workshop</h2>
+        <p style="color:#DCE9FF;" id="homeCompanySub">Invoice & Daily Sales</p>
+      </div>
+    </div>
+    <div class="screen" style="display:block; padding-top:14px;">
+      <div class="today-strip">
+        <div>
+          <div class="t-label">Today's Sales</div>
+          <div class="t-val" id="homeTodayAmt">Rs. 0</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="t-label">Invoices Today</div>
+          <div class="t-val" id="homeTodayCount">0</div>
+        </div>
+      </div>
+
+      <div class="home-grid">
+        <button class="home-btn" onclick="goTo('invoice')">
+          <div class="icon ic-invoice">🧾</div>
+          <span class="label">Create Invoice</span>
+        </button>
+        <button class="home-btn" onclick="goTo('sales')">
+          <div class="icon ic-sales">📊</div>
+          <span class="label">Daily Sales</span>
+        </button>
+        <button class="home-btn" onclick="goTo('history')">
+          <div class="icon ic-history">📚</div>
+          <span class="label">Invoice History</span>
+        </button>
+        <button class="home-btn" onclick="goTo('settings')">
+          <div class="icon ic-settings">⚙️</div>
+          <span class="label">Settings</span>
+        </button>
+      </div>
+
+      <div class="card" style="margin-top:16px; cursor:pointer;" onclick="goTo('ledger')">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="icon" style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#5C3FC7,#8A6BE0);">👥</div>
+            <div>
+              <div style="font-weight:700; font-size:14.5px;">Customer Ledger</div>
+              <div style="font-size:12px; color:var(--ink-soft);">Udhar / baqaya track karein</div>
+            </div>
+          </div>
+          <span style="color:var(--ink-soft); font-size:18px;">›</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CREATE INVOICE ============ -->
+  <section class="screen" id="screen-invoice">
+    <div class="topbar">
+      <div class="row">
+        <button class="back-btn" onclick="goTo('home')">←</button>
+        <div>
+          <h1>Create Invoice</h1>
+          <div class="sub" id="invNoPreview">INV-000001</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding-top:14px;">
+      <div class="card">
+        <h3>Invoice Details</h3>
+        <div class="two-col">
+          <div class="field"><label>Invoice #</label><input type="text" id="invNumber" readonly></div>
+          <div class="field"><label>Date</label><input type="date" id="invDate"></div>
+        </div>
+        <div class="quick-row">
+          <button type="button" class="chip" onclick="quickCustomer('Walk-in Customer')">👤 Walk-in Customer</button>
+          <button type="button" class="chip" onclick="quickCustomer('Cash Sale')">💵 Cash Sale</button>
+        </div>
+        <div class="field"><label>Customer Name (optional)</label>
+          <input type="text" id="custName" list="customerNamesList" placeholder="e.g. Ahmed Bhai" oninput="onCustNameChange()">
+          <datalist id="customerNamesList"></datalist>
+        </div>
+        <div class="field"><label>Customer Phone (optional)</label><input type="tel" id="custPhone" placeholder="03xx-xxxxxxx"></div>
+        <div class="due-banner hidden" id="dueBanner"></div>
+      </div>
+
+      <div class="card">
+        <h3>Items</h3>
+        <div id="itemRows"></div>
+        <button type="button" class="add-row-btn" onclick="addItemRow()">+ Add Item</button>
+      </div>
+
+      <div class="card">
+        <h3>Summary</h3>
+        <div class="summary-line"><span>Subtotal</span><span id="sumSubtotal">Rs. 0</span></div>
+        <div class="summary-line"><span>Discount</span><input type="number" id="sumDiscount" value="0" min="0" oninput="recalc()"></div>
+        <div class="summary-line total"><span>Invoice Amount</span><span id="sumGrand">Rs. 0</span></div>
+        <div class="summary-line hidden" id="prevDueLine"><span>Previous Due</span><span id="sumPrevDue">Rs. 0</span></div>
+        <div class="summary-line hidden" id="payableLine"><span>Total Payable</span><span id="sumTotalPayable">Rs. 0</span></div>
+        <div class="summary-line"><span>Paid Amount</span><input type="number" id="sumPaid" value="0" min="0" oninput="recalc()"></div>
+        <div class="summary-line total"><span>Balance After</span><span id="sumRemaining">Rs. 0</span></div>
+        <div class="field" style="margin-top:10px;">
+          <label>Payment Method</label>
+          <div class="pay-toggle">
+            <button type="button" id="payCash" class="active" onclick="setPayMethod('Cash')">Cash</button>
+            <button type="button" id="payCredit" onclick="setPayMethod('Credit')">Credit</button>
+          </div>
+        </div>
+      </div>
+
+      <button class="primary-btn" onclick="saveInvoice()">💾 Save Invoice</button>
+    </div>
+  </section>
+
+  <!-- ============ INVOICE HISTORY ============ -->
+  <section class="screen" id="screen-history">
+    <div class="topbar">
+      <div class="row">
+        <button class="back-btn" onclick="goTo('home')">←</button>
+        <div><h1>Invoice History</h1><div class="sub">Search & review past invoices</div></div>
+      </div>
+    </div>
+    <div style="padding-top:14px;">
+      <div class="search-bar">
+        <input type="text" id="histSearch" placeholder="Search invoice / customer..." oninput="renderHistory()">
+        <input type="date" id="histDate" onchange="renderHistory()">
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </section>
+
+  <!-- ============ CUSTOMER LEDGER ============ -->
+  <section class="screen" id="screen-ledger">
+    <div class="topbar">
+      <div class="row">
+        <button class="back-btn" onclick="goTo('home')">←</button>
+        <div><h1>Customer Ledger</h1><div class="sub">Udhar / baqaya register</div></div>
+      </div>
+    </div>
+    <div style="padding-top:14px;">
+      <div class="search-bar">
+        <input type="text" id="ledgerSearch" placeholder="Search customer..." oninput="renderLedger()">
+      </div>
+      <div id="ledgerList"></div>
+    </div>
+  </section>
+
+  <!-- ============ DAILY SALES ============ -->
+  <section class="screen" id="screen-sales">
+    <div class="topbar">
+      <div class="row">
+        <button class="back-btn" onclick="goTo('home')">←</button>
+        <div><h1>Daily Sales</h1><div class="sub" id="salesDateLabel">Today</div></div>
+      </div>
+    </div>
+    <div style="padding-top:14px;">
+      <div class="sales-grid" id="salesGrid"></div>
+      <div class="sales-total">
+        <div class="row"><span class="lbl">Total Quantity</span><span class="val" id="salesTotalQty">0</span></div>
+        <div class="row"><span class="lbl">Total Sales Amount</span><span class="val" id="salesTotalAmt">Rs. 0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="screen" id="screen-settings">
+    <div class="topbar">
+      <div class="row">
+        <button class="back-btn" onclick="goTo('home')">←</button>
+        <div><h1>Settings</h1><div class="sub">Company & invoice preferences</div></div>
+      </div>
+    </div>
+    <div style="padding-top:14px;">
+      <div class="card">
+        <h3>Company Info</h3>
+        <div class="field"><label>Company Name</label><input type="text" id="setCompanyName"></div>
+        <div class="field"><label>Phone</label><input type="text" id="setCompanyPhone"></div>
+        <div class="field"><label>Address</label><textarea id="setCompanyAddress" rows="2"></textarea></div>
+      </div>
+      <div class="card">
+        <h3>Invoice Preferences</h3>
+        <div class="two-col">
+          <div class="field"><label>Invoice Prefix</label><input type="text" id="setPrefix" value="INV-"></div>
+          <div class="field"><label>Currency</label><input type="text" id="setCurrency" value="Rs."></div>
+        </div>
+      </div>
+      <button class="primary-btn" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </section>
+
+  <!-- Bottom nav -->
+  <div class="fab" id="bottomNav">
+    <button onclick="goTo('home')" data-s="home"><span class="fic">🏠</span>Home</button>
+    <button onclick="goTo('invoice')" data-s="invoice"><span class="fic">🧾</span>Invoice</button>
+    <button onclick="goTo('sales')" data-s="sales"><span class="fic">📊</span>Sales</button>
+    <button onclick="goTo('history')" data-s="history"><span class="fic">📚</span>History</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- Invoice view modal -->
+<div class="modal-bg hidden" id="invoiceModal">
+  <div class="modal-sheet">
+    <div id="invoicePreviewContent"></div>
+    <button class="primary-btn" onclick="shareInvoicePdf()">📤 Share as PDF</button>
+    <button class="secondary-btn" onclick="printInvoice()">🖨️ Print (80mm Receipt)</button>
+    <button class="secondary-btn" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<!-- Customer ledger detail / receive payment modal -->
+<div class="modal-bg hidden" id="customerModal">
+  <div class="modal-sheet">
+    <div id="customerModalContent"></div>
+    <button class="secondary-btn" onclick="closeCustomerModal()">Close</button>
+  </div>
+</div>
+
+<script src="jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

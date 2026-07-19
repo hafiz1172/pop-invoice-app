@@ -1,0 +1,18 @@
+{
+  "name": "POP Invoice",
+  "short_name": "POP Invoice",
+  "description": "Offline invoicing and daily sales tracker for Plaster of Paris workshop",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F8FF",
+  "theme_color": "#1450A3",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
