@@ -207,6 +207,38 @@
   .modal-bg{ position:fixed; inset:0; background:rgba(10,20,40,0.45); z-index:40; display:flex; align-items:flex-end; }
   .modal-sheet{ background:#fff; width:100%; border-radius:22px 22px 0 0; padding:20px; max-height:82vh; overflow:auto;}
   .modal-sheet h3{margin-top:0;}
+
+  /* ITEM PICKER (tap-to-select, no typing) */
+  .item-picker-btn{
+    width:100%; display:flex; align-items:center; gap:12px; padding:14px;
+    border-radius:14px; border:1.8px dashed var(--blue-600); background:#fff;
+    font-weight:700; color:var(--blue-800); font-size:15.5px; text-align:left;
+  }
+  .item-picker-btn:active{ transform:scale(.98); }
+  .item-picker-btn .ip-icon{
+    font-size:26px; width:42px; height:42px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--blue-100); border-radius:12px;
+  }
+  .item-picker-btn.picked{ border-style:solid; border-color:var(--green); }
+  .item-picker-btn.picked .ip-icon{ background:#DEF6EB; }
+
+  .product-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin:12px 0 6px;}
+  .product-card{
+    background:var(--blue-050); border:1.5px solid var(--line); border-radius:14px;
+    padding:16px 8px; text-align:center; display:flex; flex-direction:column;
+    align-items:center; gap:8px;
+  }
+  .product-card .pc-icon{font-size:32px;}
+  .product-card .pc-name{font-size:12px; font-weight:700; color:var(--ink); line-height:1.2;}
+  .product-card:active{ transform:scale(.94); background:var(--blue-100); }
+
+  .icon-pick-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .icon-pick-row button{
+    font-size:22px; width:46px; height:46px; border-radius:12px;
+    border:1.8px solid var(--line); background:#fff;
+  }
+  .icon-pick-row button.sel{ border-color:var(--blue-600); background:var(--blue-100); }
 </style>
 </head>
 <body>
@@ -427,6 +459,32 @@
   <div class="modal-sheet">
     <div id="customerModalContent"></div>
     <button class="secondary-btn" onclick="closeCustomerModal()">Close</button>
+  </div>
+</div>
+
+<!-- Product picker modal — Munshi taps a picture, never types -->
+<div class="modal-bg hidden" id="productPickerModal">
+  <div class="modal-sheet">
+    <h3>Item Chunein</h3>
+    <div class="product-grid" id="productGrid"></div>
+    <button type="button" class="add-row-btn" style="margin-top:8px;" onclick="showAddProductForm()">➕ Naya Item Shamil Karein</button>
+
+    <div id="addProductForm" class="hidden" style="margin-top:16px; border-top:1.5px dashed var(--line); padding-top:16px;">
+      <div class="field">
+        <label>Category</label>
+        <select id="newProdCategory"></select>
+      </div>
+      <div class="field">
+        <label>Icon Chunein</label>
+        <div class="icon-pick-row" id="iconPickRow"></div>
+      </div>
+      <div class="field"><label>Item Ka Naam</label><input type="text" id="newProdName" placeholder="e.g. Tile 2x2 Plain"></div>
+      <div class="field"><label>Rate (Rs.)</label><input type="number" id="newProdPrice" value="0" min="0"></div>
+      <button type="button" class="primary-btn" onclick="saveNewProduct()">💾 Item Save Karein</button>
+      <button type="button" class="secondary-btn" onclick="hideAddProductForm()">Cancel</button>
+    </div>
+
+    <button class="secondary-btn" onclick="closeProductPicker()">Close</button>
   </div>
 </div>
 
