@@ -22,7 +22,7 @@ function isTrackedName(name) {
 /* ---------- IndexedDB setup ---------- */
 function openDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open("popInvoiceDB", 2);
+    const req = indexedDB.open("popInvoiceDB", 3);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains("invoices")) {
@@ -35,6 +35,9 @@ function openDB() {
       }
       if (!db.objectStoreNames.contains("customers")) {
         db.createObjectStore("customers", { keyPath: "key" });
+      }
+      if (!db.objectStoreNames.contains("products")) {
+        db.createObjectStore("products", { keyPath: "id", autoIncrement: true });
       }
     };
     req.onsuccess = (e) => resolve(e.target.result);
@@ -198,6 +201,105 @@ async function refreshDueBanner() {
   recalc();
 }
 
+/* ---------- Product catalog (tap-to-pick items, no typing for Munshi) ---------- */
+const PRODUCT_ICONS = ["🧱","⬜","🔲","🌸","🌺","🚪","🏺","📦","🔺","⭐","🪟","🧰","🔷","🎯","🧊"];
+let PRODUCTS = [];
+let activePickerRowId = null;
+let selectedNewIcon = PRODUCT_ICONS[0];
+
+async function loadProducts() {
+  PRODUCTS = await idbGetAll("products");
+  if (PRODUCTS.length === 0) {
+    const defaults = [
+      { name: "POP Bori",        icon: "🧱", category: "Plaster Bags", price: 0 },
+      { name: "Tile 2x2 Plain",  icon: "⬜", category: "Tiles",        price: 0 },
+      { name: "Tile 2x2 Jali",   icon: "🔲", category: "Tiles",        price: 0 },
+      { name: "Corner Design",   icon: "🌸", category: "Design",       price: 0 },
+      { name: "Center Flower",   icon: "🌺", category: "Design",       price: 0 },
+      { name: "Other Item",      icon: "📦", category: "Others",       price: 0 },
+    ];
+    for (const p of defaults) await idbPut("products", p);
+    PRODUCTS = await idbGetAll("products");
+  }
+}
+
+function openProductPicker(rowId) {
+  activePickerRowId = rowId;
+  hideAddProductForm();
+  renderProductGrid();
+  document.getElementById("productPickerModal").classList.remove("hidden");
+}
+
+function closeProductPicker() {
+  document.getElementById("productPickerModal").classList.add("hidden");
+  activePickerRowId = null;
+}
+
+function renderProductGrid() {
+  const grid = document.getElementById("productGrid");
+  grid.innerHTML = PRODUCTS.map(p => `
+    <button type="button" class="product-card" onclick="pickProduct(${p.id})">
+      <span class="pc-icon">${p.icon}</span>
+      <span class="pc-name">${p.name}</span>
+    </button>
+  `).join("");
+}
+
+function pickProduct(productId) {
+  const p = PRODUCTS.find(x => x.id === productId);
+  if (!p || !activePickerRowId) return;
+  const wrap = document.getElementById(activePickerRowId);
+  if (!wrap) return;
+  wrap.dataset.category = p.category;
+  wrap.dataset.desc = p.name;
+  wrap.dataset.productId = p.id;
+  wrap.dataset.icon = p.icon;
+  const btn = wrap.querySelector(".item-picker-btn");
+  btn.classList.add("picked");
+  btn.querySelector(".ip-icon").textContent = p.icon;
+  btn.querySelector(".ip-text").textContent = p.name;
+  const rateInput = wrap.querySelector(".row-rate");
+  if ((parseFloat(rateInput.value) || 0) === 0 && p.price) rateInput.value = p.price;
+  closeProductPicker();
+  recalc();
+}
+
+function showAddProductForm() {
+  const catSel = document.getElementById("newProdCategory");
+  catSel.innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  const iconRow = document.getElementById("iconPickRow");
+  selectedNewIcon = PRODUCT_ICONS[0];
+  iconRow.innerHTML = PRODUCT_ICONS.map((ic, i) =>
+    `<button type="button" class="${i === 0 ? "sel" : ""}" onclick="pickNewIcon('${ic}', this)">${ic}</button>`
+  ).join("");
+  document.getElementById("newProdName").value = "";
+  document.getElementById("newProdPrice").value = 0;
+  document.getElementById("addProductForm").classList.remove("hidden");
+}
+
+function hideAddProductForm() {
+  document.getElementById("addProductForm").classList.add("hidden");
+}
+
+function pickNewIcon(icon, btn) {
+  selectedNewIcon = icon;
+  document.querySelectorAll("#iconPickRow button").forEach(b => b.classList.remove("sel"));
+  btn.classList.add("sel");
+}
+
+async function saveNewProduct() {
+  const name = document.getElementById("newProdName").value.trim();
+  const price = parseFloat(document.getElementById("newProdPrice").value) || 0;
+  const category = document.getElementById("newProdCategory").value;
+  if (!name) { showToast("Item ka naam likhein"); return; }
+  const newId = await idbPut("products", { name, icon: selectedNewIcon, category, price });
+  await loadProducts();
+  hideAddProductForm();
+  renderProductGrid();
+  showToast("Naya item add ho gaya");
+  pickProduct(newId);
+}
+
 /* ---------- Item rows ---------- */
 function addItemRow() {
   itemRowCount++;
@@ -205,19 +307,17 @@ function addItemRow() {
   const wrap = document.createElement("div");
   wrap.className = "item-row";
   wrap.id = id;
+  wrap.dataset.category = "";
+  wrap.dataset.desc = "";
+  wrap.dataset.productId = "";
+  wrap.dataset.icon = "";
   wrap.innerHTML = `
     <button type="button" class="remove-x" onclick="removeItemRow('${id}')">×</button>
-    <div class="field" style="margin-bottom:8px;">
-      <label>Category</label>
-      <select class="row-category" oninput="recalc()">
-        ${CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("")}
-      </select>
-    </div>
-    <div class="field" style="margin-bottom:8px;">
-      <label>Description</label>
-      <input type="text" class="row-desc" placeholder="e.g. Ceiling design panel">
-    </div>
-    <div class="two-col">
+    <button type="button" class="item-picker-btn" onclick="openProductPicker('${id}')">
+      <span class="ip-icon">➕</span>
+      <span class="ip-text">Item Chunein</span>
+    </button>
+    <div class="two-col" style="margin-top:10px;">
       <div class="field" style="margin-bottom:0;">
         <label>Qty</label>
         <input type="number" class="row-qty" value="1" min="0" step="0.01" oninput="recalc()">
@@ -248,8 +348,8 @@ function collectItems() {
   const rows = document.querySelectorAll("#itemRows .item-row");
   const items = [];
   rows.forEach(r => {
-    const category = r.querySelector(".row-category").value;
-    const desc = r.querySelector(".row-desc").value.trim();
+    const category = r.dataset.category || "Others";
+    const desc = r.dataset.desc || "";
     const qty = parseFloat(r.querySelector(".row-qty").value) || 0;
     const rate = parseFloat(r.querySelector(".row-rate").value) || 0;
     const total = qty * rate;
@@ -712,6 +812,7 @@ function shareInvoicePdf() {
 window.addEventListener("load", async () => {
   DB = await openDB();
   await loadSettings();
+  await loadProducts();
   await refreshHomeStats();
   prepareNewInvoice();
 
