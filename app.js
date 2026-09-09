@@ -678,9 +678,12 @@ function buildInvoiceHTML(inv) {
 /* Builds a narrow 80mm receipt layout for thermal printers.
    Works with Bluetooth thermal-printer apps (e.g. RawBT) that
    capture the browser print job, or with USB/network thermal
-   printers via the normal Android print dialog. */
+   printers via the normal Android print dialog.
+   Kept as HTML (not raw ESC/POS text) on purpose — this receipt
+   can contain Urdu item names (e.g. جالی), which most thermal
+   printers cannot render in raw text mode. Printing it as a
+   bold, high-contrast bitmap is what keeps Urdu working. */
 function buildThermalReceiptHTML(inv) {
-  const line = "-".repeat(32);
   const pad = (l, r, w = 32) => {
     l = String(l); r = String(r);
     const gap = Math.max(w - l.length - r.length, 1);
@@ -699,14 +702,14 @@ function buildThermalReceiptHTML(inv) {
       <div class="center bold big">${SETTINGS.companyName}</div>
       ${SETTINGS.companyPhone ? `<div class="center">${SETTINGS.companyPhone}</div>` : ""}
       ${SETTINGS.companyAddress ? `<div class="center">${SETTINGS.companyAddress}</div>` : ""}
-      <div class="dash">${line}</div>
+      <div class="hr"></div>
       <div>${pad("Invoice#:", inv.invNumber)}</div>
       <div>${pad("Date:", inv.date)}</div>
       <div>${pad("Customer:", inv.customerName)}</div>
       ${inv.customerPhone ? `<div>${pad("Phone:", inv.customerPhone)}</div>` : ""}
-      <div class="dash">${line}</div>
+      <div class="hr"></div>
       <pre>${itemLines}</pre>
-      <div class="dash">${line}</div>
+      <div class="hr"></div>
       <div>${pad("Subtotal", money(inv.subtotal))}</div>
       <div>${pad("Discount", money(inv.discount))}</div>
       <div class="bold">${pad("Invoice Amount", money(inv.grand))}</div>
@@ -715,7 +718,7 @@ function buildThermalReceiptHTML(inv) {
       <div class="bold">${pad("Total Payable", money(inv.totalPayable))}</div>` : ""}
       <div>${pad("Paid (" + inv.paymentMethod + ")", money(inv.paid))}</div>
       <div class="bold">${pad("Balance After", money(inv.remaining))}</div>
-      <div class="dash">${line}</div>
+      <div class="hr"></div>
       <div class="center">Thank you for your business!</div>
       <div class="center small">Signature: ____________</div>
     </div>
@@ -726,18 +729,21 @@ function printInvoice() {
   const w = window.open("", "_blank");
   w.document.write(`<html><head><title>${CURRENT_VIEW_INVOICE.invNumber}</title>
     <style>
-      @page { size: 80mm auto; margin: 2mm; }
-      html,body{ width:76mm; margin:0; padding:0; }
+      @page { size: 80mm auto; margin: 1mm; }
+      html,body{ width:78mm; margin:0; padding:0; background:#fff; }
       body{
         font-family:'Courier New', Consolas, monospace;
-        font-size:12px; line-height:1.45; color:#000; padding:2mm 3mm;
+        font-weight:700;
+        font-size:15px; line-height:1.5; color:#000; padding:1mm 2mm;
+        -webkit-font-smoothing:none;
+        -webkit-print-color-adjust:exact; print-color-adjust:exact;
       }
-      .receipt div, .receipt pre{ margin:0; white-space:pre-wrap; word-break:break-word; }
+      .receipt div, .receipt pre{ margin:0; white-space:pre-wrap; word-break:break-word; font-weight:700; }
       .center{ text-align:center; }
       .bold{ font-weight:700; }
-      .big{ font-size:15px; }
-      .small{ font-size:10px; }
-      .dash{ letter-spacing:-0.5px; }
+      .big{ font-size:19px; }
+      .small{ font-size:12px; }
+      .hr{ border-top:2px solid #000; margin:5px 0; }
       pre{ font-family:inherit; }
     </style></head><body>${buildThermalReceiptHTML(CURRENT_VIEW_INVOICE)}</body></html>`);
   w.document.close();
@@ -820,3 +826,6 @@ window.addEventListener("load", async () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 });
+
+
+
