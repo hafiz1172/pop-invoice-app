@@ -1,4 +1,4 @@
-const CACHE_NAME = "pop-invoice-v2";
+const CACHE_NAME = "pop-invoice-v3";
 const ASSETS = ["./index.html", "./app.js", "./manifest.json", "./icon.svg", "./jspdf.umd.min.js"];
 
 self.addEventListener("install", (e) => {
@@ -20,4 +20,3 @@ self.addEventListener("fetch", (e) => {
     caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => cached))
   );
 });
-
