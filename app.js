@@ -675,15 +675,14 @@ function buildInvoiceHTML(inv) {
   `;
 }
 
-/* Builds a narrow 80mm receipt layout for thermal printers.
-   Works with Bluetooth thermal-printer apps (e.g. RawBT) that
-   capture the browser print job, or with USB/network thermal
-   printers via the normal Android print dialog.
-   Kept as HTML (not raw ESC/POS text) on purpose — this receipt
-   can contain Urdu item names (e.g. جالی), which most thermal
-   printers cannot render in raw text mode. Printing it as a
-   bold, high-contrast bitmap is what keeps Urdu working. */
-function buildThermalReceiptHTML(inv) {
+/* Plain-text version for sharing/printing via the Android Share
+   sheet (e.g. RawBT), which prints crisp raw text instead of a
+   rasterized image. NOTE: Urdu/Arabic item names will not print
+   correctly through this route on most thermal printers — keep
+   item names in Roman Urdu / English (e.g. "Patti" not "پتی")
+   if you use this button. */
+function buildThermalReceiptText(inv) {
+  const line = "-".repeat(32);
   const pad = (l, r, w = 32) => {
     l = String(l); r = String(r);
     const gap = Math.max(w - l.length - r.length, 1);
@@ -697,58 +696,53 @@ function buildThermalReceiptHTML(inv) {
     return `${desc}\n${pad(qtyRate, money(i.total))}`;
   }).join("\n");
 
-  return `
-    <div class="receipt">
-      <div class="center bold big">${SETTINGS.companyName}</div>
-      ${SETTINGS.companyPhone ? `<div class="center">${SETTINGS.companyPhone}</div>` : ""}
-      ${SETTINGS.companyAddress ? `<div class="center">${SETTINGS.companyAddress}</div>` : ""}
-      <div class="hr"></div>
-      <div>${pad("Invoice#:", inv.invNumber)}</div>
-      <div>${pad("Date:", inv.date)}</div>
-      <div>${pad("Customer:", inv.customerName)}</div>
-      ${inv.customerPhone ? `<div>${pad("Phone:", inv.customerPhone)}</div>` : ""}
-      <div class="hr"></div>
-      <pre>${itemLines}</pre>
-      <div class="hr"></div>
-      <div>${pad("Subtotal", money(inv.subtotal))}</div>
-      <div>${pad("Discount", money(inv.discount))}</div>
-      <div class="bold">${pad("Invoice Amount", money(inv.grand))}</div>
-      ${inv.previousDue ? `
-      <div>${pad("Previous Due", money(inv.previousDue))}</div>
-      <div class="bold">${pad("Total Payable", money(inv.totalPayable))}</div>` : ""}
-      <div>${pad("Paid (" + inv.paymentMethod + ")", money(inv.paid))}</div>
-      <div class="bold">${pad("Balance After", money(inv.remaining))}</div>
-      <div class="hr"></div>
-      <div class="center">Thank you for your business!</div>
-      <div class="center small">Signature: ____________</div>
-    </div>
-  `;
+  const lines = [];
+  lines.push(SETTINGS.companyName);
+  if (SETTINGS.companyPhone) lines.push(SETTINGS.companyPhone);
+  if (SETTINGS.companyAddress) lines.push(SETTINGS.companyAddress);
+  lines.push(line);
+  lines.push(pad("Invoice#:", inv.invNumber));
+  lines.push(pad("Date:", inv.date));
+  lines.push(pad("Customer:", inv.customerName));
+  if (inv.customerPhone) lines.push(pad("Phone:", inv.customerPhone));
+  lines.push(line);
+  lines.push(itemLines);
+  lines.push(line);
+  lines.push(pad("Subtotal", money(inv.subtotal)));
+  lines.push(pad("Discount", money(inv.discount)));
+  lines.push(pad("Invoice Amount", money(inv.grand)));
+  if (inv.previousDue) {
+    lines.push(pad("Previous Due", money(inv.previousDue)));
+    lines.push(pad("Total Payable", money(inv.totalPayable)));
+  }
+  lines.push(pad("Paid (" + inv.paymentMethod + ")", money(inv.paid)));
+  lines.push(pad("Balance After", money(inv.remaining)));
+  lines.push(line);
+  lines.push("Thank you for your business!");
+  lines.push("Signature: ____________");
+  return lines.join("\n");
 }
 
-function printInvoice() {
-  const w = window.open("", "_blank");
-  w.document.write(`<html><head><title>${CURRENT_VIEW_INVOICE.invNumber}</title>
-    <style>
-      @page { size: 80mm auto; margin: 1mm; }
-      html,body{ width:78mm; margin:0; padding:0; background:#fff; }
-      body{
-        font-family:'Courier New', Consolas, monospace;
-        font-weight:700;
-        font-size:15px; line-height:1.5; color:#000; padding:1mm 2mm;
-        -webkit-font-smoothing:none;
-        -webkit-print-color-adjust:exact; print-color-adjust:exact;
-      }
-      .receipt div, .receipt pre{ margin:0; white-space:pre-wrap; word-break:break-word; font-weight:700; }
-      .center{ text-align:center; }
-      .bold{ font-weight:700; }
-      .big{ font-size:19px; }
-      .small{ font-size:12px; }
-      .hr{ border-top:2px solid #000; margin:5px 0; }
-      pre{ font-family:inherit; }
-    </style></head><body>${buildThermalReceiptHTML(CURRENT_VIEW_INVOICE)}</body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 300);
+async function printInvoice() {
+  const text = buildThermalReceiptText(CURRENT_VIEW_INVOICE);
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ text, title: CURRENT_VIEW_INVOICE.invNumber });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return; // user closed the share sheet
+    }
+  }
+
+  // Fallback for browsers with no Share API (e.g. desktop testing)
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Text copy ho gaya — kisi bhi print app mein paste kar dein");
+  } catch {
+    const w = window.open("", "_blank");
+    w.document.write(`<pre style="font-family:monospace;white-space:pre-wrap;font-size:16px;">${text}</pre>`);
+  }
 }
 
 function shareInvoicePdf() {
@@ -826,6 +820,3 @@ window.addEventListener("load", async () => {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 });
-
-
-
